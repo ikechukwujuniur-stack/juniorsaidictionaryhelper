@@ -3,8 +3,8 @@ import requests
 
 API_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/{}"
 
-st.set_page_config(page_title="📖 Online Dictionary", layout="centered")
-st.title("📖 Online Dictionary App")
+st.set_page_config(page_title="📖junior dictionary AI", layout="centered")
+st.title("📖 junior dictionary AI")
 st.write("Type an English word and get its **meaning, synonyms, antonyms, phonetics** online. No API key needed.")
 
 # Input word
@@ -43,4 +43,5 @@ if word:
                         st.write("🔴 Antonyms:", ", ".join(definition["antonyms"][:10]))
 
     except Exception as e:
+
         st.error(f"Error fetching data: {e}")
