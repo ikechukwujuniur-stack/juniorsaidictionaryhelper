@@ -8,7 +8,7 @@ st.title("📖 junior dictionary AI")
 st.write("Type an English word and get its **meaning, synonyms, antonyms, phonetics** online. No API key needed.")
 
 # Input word
-word = st.text_input("Enter a word:", value="example").strip().lower()
+word = st.text_input("Enter a word:", value=" ").strip().lower()
 
 if word:
     try:
@@ -45,3 +45,4 @@ if word:
     except Exception as e:
 
         st.error(f"Error fetching data: {e}")
+
