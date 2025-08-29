@@ -46,3 +46,4 @@ if word:
 
         st.error(f"Error fetching data: {e}")
 
+
