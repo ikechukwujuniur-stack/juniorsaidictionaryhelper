@@ -10,26 +10,7 @@ st.write("Type an English word and get its **meaning, synonyms, antonyms, phonet
 # Sidebar settings
 st.sidebar.header("⚙️ Settings")
 
-# Display options
-show_phonetics = st.sidebar.checkbox("Show Phonetics", True)
-play_audio = st.sidebar.checkbox("Play Pronunciation Audio", True)
-show_synonyms = st.sidebar.checkbox("Show Synonyms", True)
-show_antonyms = st.sidebar.checkbox("Show Antonyms", True)
-show_examples = st.sidebar.checkbox("Show Examples", True)
-
-# Output style
-output_style = st.sidebar.radio(
-    "Choose display style:",
-    ("Detailed", "Minimal")
-)
-
-# 🎨 Color settings
-theme_color = st.sidebar.color_picker("Pick highlight color", "#1f77b4")
-bg_color = st.sidebar.color_picker("Pick background color", "#ffffff")
-text_color = st.sidebar.color_picker("Pick text color", "#000000")
-
-
-# 🎨 Color settings with gradient box
+# 🎨 Gradient box for color settings
 st.sidebar.markdown(
     """
     <div style="
@@ -45,31 +26,38 @@ st.sidebar.markdown(
     unsafe_allow_html=True
 )
 
+# Color settings
+theme_color = st.sidebar.color_picker("Highlight Color", "#1f77b4")
+bg_color = st.sidebar.color_picker("Background Color", "#ffffff")
+text_color = st.sidebar.color_picker("Text Color", "#000000")
 
-
-# Inject CSS with !important to force colors
+# Apply background + text color globally
 st.markdown(
     f"""
     <style>
-    html, body, [class*="st"] {{
-        background-color: {bg_color} !important;
-        color: {text_color} !important;
-    }}
-    h1, h2, h3, h4, h5, h6, .stMarkdown strong {{
-        color: {theme_color} !important;
-    }}
+        .stApp {{
+            background-color: {bg_color} !important;
+            color: {text_color} !important;
+        }}
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# Layout
-layout_option = st.sidebar.radio(
-    "Choose layout:",
-    ("Single Column", "Two Columns")
-)
+# Display options
+show_phonetics = st.sidebar.checkbox("Show Phonetics", True)
+play_audio = st.sidebar.checkbox("Play Pronunciation Audio", True)
+show_synonyms = st.sidebar.checkbox("Show Synonyms", True)
+show_antonyms = st.sidebar.checkbox("Show Antonyms", True)
+show_examples = st.sidebar.checkbox("Show Examples", True)
 
-# Voice speed option (placeholder, only works if using custom TTS)
+# Output style
+output_style = st.sidebar.radio("Choose display style:", ("Detailed", "Minimal"))
+
+# Layout
+layout_option = st.sidebar.radio("Choose layout:", ("Single Column", "Two Columns"))
+
+# Voice speed option
 voice_speed = st.sidebar.slider("Voice Speed (for pronunciation)", 0.5, 2.0, 1.0, 0.1)
 
 # Input word
@@ -91,8 +79,8 @@ if word:
                 for ph in entry["phonetics"]:
                     if "text" in ph:
                         st.markdown(
-                            f"<span style='color:{theme_color}'>**Phonetic:** {ph['text']}</span>",
-                            unsafe_allow_html=True
+                            f"<span style='color:{theme_color}; font-weight:bold;'>Phonetic: {ph['text']}</span>",
+                            unsafe_allow_html=True,
                         )
                     if play_audio and "audio" in ph and ph["audio"]:
                         st.audio(ph["audio"])
@@ -110,8 +98,8 @@ if word:
                 for i, definition in enumerate(meaning["definitions"], 1):
                     if output_style == "Detailed":
                         col1.markdown(
-                            f"<span style='color:{theme_color}'>**({part_of_speech}) {i}.**</span> {definition['definition']}",
-                            unsafe_allow_html=True
+                            f"<span style='color:{theme_color}; font-weight:bold;'>({part_of_speech}) {i}.</span> {definition['definition']}",
+                            unsafe_allow_html=True,
                         )
                     else:
                         col1.write(f"- {definition['definition']}")
