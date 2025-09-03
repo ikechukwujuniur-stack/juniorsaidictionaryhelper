@@ -3,8 +3,8 @@ import requests
 
 API_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/{}"
 
-st.set_page_config(page_title="📖 Junior Dictionary AI", layout="centered")
-st.title("📖 Junior Dictionary AI")
+st.set_page_config(page_title="📖 smart Dictionary AI", layout="centered")
+st.title("📖 smart Dictionary AI")
 st.write("Type an English word and get its **meaning, synonyms, antonyms, phonetics and voices** online. No API key needed.")
 
 # Sidebar settings
@@ -113,3 +113,4 @@ if word:
 
     except Exception as e:
         st.error(f"Error fetching data: {e}")
+
