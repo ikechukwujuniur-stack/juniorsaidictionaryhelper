@@ -75,18 +75,23 @@ def change_password(username, new_password):
 # -------------------------
 st.sidebar.header("📌 Navigation")
 
+# Initialize nav_page if missing
 if "nav_page" not in st.session_state:
     st.session_state.nav_page = st.session_state.page
 
+# Sidebar selectbox
 nav_choice = st.sidebar.selectbox(
     "Go to page:",
     ["Login", "Register", "Dictionary", "Settings"],
+    index=["Login", "Register", "Dictionary", "Settings"].index(st.session_state.page),
     key="nav_page"
 )
 
-# sync sidebar → app
-st.session_state.page = nav_choice
+# Only update page if user manually changes it
+if nav_choice != st.session_state.page:
+    st.session_state.page = nav_choice
 
+# Show logged-in status
 if st.session_state.authenticated:
     st.sidebar.success(f"Logged in as {st.session_state.username}")
     if st.sidebar.button("🚪 Logout"):
@@ -110,6 +115,15 @@ st.markdown(
     }}
     h1, h2, h3 {{
         color: {st.session_state.accent_color};
+    }}
+    div.stButton > button {{
+        background-color: {st.session_state.accent_color};
+        color: #ffffff;
+        border-radius: 8px;
+        padding: 0.5em 1em;
+    }}
+    div.stButton > button:hover {{
+        opacity: 0.85;
     }}
     </style>
     """,
@@ -213,7 +227,10 @@ elif st.session_state.page == "Dictionary":
                 for meaning in entry.get("meanings", []):
                     pos = meaning.get("partOfSpeech", "")
                     for d in meaning.get("definitions", []):
-                        col1.write(f"**({pos})** {d['definition']}")
+                        if output_style == "Detailed":
+                            col1.markdown(f"**({pos})** {d['definition']}")
+                        else:
+                            col1.write(f"- {d['definition']}")
 
                         if show_examples and "example" in d:
                             col2.caption("Example: " + d["example"])
@@ -221,7 +238,12 @@ elif st.session_state.page == "Dictionary":
                             col2.write("🟢 Synonyms: " + ", ".join(d["synonyms"][:10]))
                         if show_antonyms and d.get("antonyms"):
                             col2.write("🔴 Antonyms: " + ", ".join(d["antonyms"][:10]))
-
+                        if show_phonetics and "phonetics" in entry:
+                            for ph in entry["phonetics"]:
+                                if "text" in ph:
+                                    col2.markdown(f"Phonetic: {ph['text']}")
+                                if play_audio and "audio" in ph and ph["audio"]:
+                                    col2.audio(ph["audio"], format="audio/mp3")
         except Exception as e:
             st.error(f"Error fetching data: {e}")
 
