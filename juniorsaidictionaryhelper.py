@@ -13,7 +13,7 @@ API_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/{}"
 st.set_page_config(page_title="📖 Smart Dictionary AI", layout="centered")
 
 # -------------------------
-# SESSION STATE
+# SESSION STATE (single source of truth)
 # -------------------------
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -22,7 +22,7 @@ if "username" not in st.session_state:
 if "page" not in st.session_state:
     st.session_state.page = "Login"
 
-# UI settings
+# UI defaults
 defaults = {
     "brightness": 1.0,
     "font_size": 16,
@@ -40,7 +40,6 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def load_users():
-    # ✅ FIX: recreate users.json if app was reinstalled
     if not os.path.exists(USERS_FILE):
         with open(USERS_FILE, "w") as f:
             json.dump({}, f)
@@ -54,13 +53,13 @@ def save_users(users):
 
 def register_user(username, password):
     if not username or not password:
-        return False, "❌ Username and password cannot be empty"
+        return False, "Username and password cannot be empty"
     users = load_users()
     if username in users:
-        return False, "⚠️ Username already exists. Please login instead."
+        return False, "Username already exists. Please login."
     users[username] = hash_password(password)
     save_users(users)
-    return True, "✅ Registration successful! Please login next."
+    return True, "Registration successful! Please login."
 
 def verify_user(username, password):
     users = load_users()
@@ -72,18 +71,21 @@ def change_password(username, new_password):
     save_users(users)
 
 # -------------------------
-# SIDEBAR NAVIGATION
+# SIDEBAR NAVIGATION (FIXED)
 # -------------------------
 st.sidebar.header("📌 Navigation")
-st.sidebar.caption("Use this menu to move between pages")
 
-page = st.sidebar.selectbox(
+if "nav_page" not in st.session_state:
+    st.session_state.nav_page = st.session_state.page
+
+nav_choice = st.sidebar.selectbox(
     "Go to page:",
     ["Login", "Register", "Dictionary", "Settings"],
-    index=["Login", "Register", "Dictionary", "Settings"].index(st.session_state.page),
-    key="nav_page",
+    key="nav_page"
 )
-st.session_state.page = page
+
+# sync sidebar → app
+st.session_state.page = nav_choice
 
 if st.session_state.authenticated:
     st.sidebar.success(f"Logged in as {st.session_state.username}")
@@ -91,6 +93,7 @@ if st.session_state.authenticated:
         st.session_state.authenticated = False
         st.session_state.username = ""
         st.session_state.page = "Login"
+        st.session_state.nav_page = "Login"
         st.rerun()
 
 # -------------------------
@@ -116,13 +119,12 @@ st.markdown(
 # -------------------------
 # LOGIN PAGE
 # -------------------------
-if page == "Login":
+if st.session_state.page == "Login":
     st.title("🔑 Login")
 
-    # ✅ NEW USER GUIDANCE
     st.info(
-        "ℹ️ Accounts are stored **locally**.\n\n"
-        "If you **reinstalled or moved the app**, you must **Register again**."
+        "ℹ️ Accounts are stored locally.\n\n"
+        "If you reinstalled the app, please **Register again**."
     )
 
     username = st.text_input("Username", key="login_user")
@@ -133,30 +135,28 @@ if page == "Login":
             st.session_state.authenticated = True
             st.session_state.username = username.strip()
             st.session_state.page = "Dictionary"
-            st.success(f"🎉 Welcome {username}!")
+            st.session_state.nav_page = "Dictionary"
+            st.success("Login successful!")
             st.rerun()
         else:
-            # ✅ BETTER ERROR MESSAGE
             st.error(
                 "❌ Login failed.\n\n"
-                "• If you reinstalled the app, please **Register again**.\n"
-                "• Or check your username and password."
+                "• Check username/password\n"
+                "• Or register again if app was reinstalled"
             )
 
     if st.button("➡️ Go to Register"):
         st.session_state.page = "Register"
+        st.session_state.nav_page = "Register"
         st.rerun()
 
 # -------------------------
 # REGISTER PAGE
 # -------------------------
-elif page == "Register":
+elif st.session_state.page == "Register":
     st.title("📝 Register")
 
-    st.info(
-        "🆕 Create a new account here.\n\n"
-        "After registering, you will return to **Login**."
-    )
+    st.info("Create a new account, then login.")
 
     username = st.text_input("Choose username", key="reg_user")
     password = st.text_input("Choose password", type="password", key="reg_pass")
@@ -166,20 +166,22 @@ elif page == "Register":
         if success:
             st.success(msg)
             st.session_state.page = "Login"
+            st.session_state.nav_page = "Login"
             st.rerun()
         else:
             st.error(msg)
 
     if st.button("⬅️ Back to Login"):
         st.session_state.page = "Login"
+        st.session_state.nav_page = "Login"
         st.rerun()
 
 # -------------------------
 # DICTIONARY PAGE
 # -------------------------
-elif page == "Dictionary":
+elif st.session_state.page == "Dictionary":
     if not st.session_state.authenticated:
-        st.warning("🔒 Please login first")
+        st.warning("Please login first")
         st.stop()
 
     st.title("📖 Smart Dictionary AI")
@@ -201,7 +203,7 @@ elif page == "Dictionary":
             data = response.json()
 
             if isinstance(data, dict):
-                st.error("❌ No definitions found.")
+                st.error("No definitions found.")
             else:
                 entry = data[0]
                 st.subheader(entry["word"].capitalize())
@@ -226,12 +228,13 @@ elif page == "Dictionary":
 # -------------------------
 # SETTINGS PAGE
 # -------------------------
-elif page == "Settings":
+elif st.session_state.page == "Settings":
     if not st.session_state.authenticated:
         st.warning("Login required")
         st.stop()
 
     st.title("⚙️ Settings")
+
     st.session_state.brightness = st.slider("Brightness", 0.5, 1.0, st.session_state.brightness)
     st.session_state.font_size = st.slider("Font Size", 12, 24, st.session_state.font_size)
     st.session_state.accent_color = st.color_picker("Accent Color", st.session_state.accent_color)
@@ -243,6 +246,6 @@ elif page == "Settings":
     if st.button("Update Password"):
         if new_pass:
             change_password(st.session_state.username, new_pass)
-            st.success("Password updated successfully")
+            st.success("Password updated")
         else:
             st.error("Password cannot be empty")
