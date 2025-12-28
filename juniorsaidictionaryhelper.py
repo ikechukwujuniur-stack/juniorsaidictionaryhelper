@@ -40,7 +40,10 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def load_users():
+    # ✅ FIX: recreate users.json if app was reinstalled
     if not os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "w") as f:
+            json.dump({}, f)
         return {}
     with open(USERS_FILE, "r") as f:
         return json.load(f)
@@ -51,13 +54,13 @@ def save_users(users):
 
 def register_user(username, password):
     if not username or not password:
-        return False, "Username and password cannot be empty"
+        return False, "❌ Username and password cannot be empty"
     users = load_users()
     if username in users:
-        return False, "Username already exists. Please login."
+        return False, "⚠️ Username already exists. Please login instead."
     users[username] = hash_password(password)
     save_users(users)
-    return True, "Registration successful! Please login."
+    return True, "✅ Registration successful! Please login next."
 
 def verify_user(username, password):
     users = load_users()
@@ -78,7 +81,7 @@ page = st.sidebar.selectbox(
     "Go to page:",
     ["Login", "Register", "Dictionary", "Settings"],
     index=["Login", "Register", "Dictionary", "Settings"].index(st.session_state.page),
-    key="nav_select",
+    key="nav_page",
 )
 st.session_state.page = page
 
@@ -115,7 +118,12 @@ st.markdown(
 # -------------------------
 if page == "Login":
     st.title("🔑 Login")
-    st.info("👉 New user? Click **Register** in the sidebar.")
+
+    # ✅ NEW USER GUIDANCE
+    st.info(
+        "ℹ️ Accounts are stored **locally**.\n\n"
+        "If you **reinstalled or moved the app**, you must **Register again**."
+    )
 
     username = st.text_input("Username", key="login_user")
     password = st.text_input("Password", type="password", key="login_pass")
@@ -125,17 +133,30 @@ if page == "Login":
             st.session_state.authenticated = True
             st.session_state.username = username.strip()
             st.session_state.page = "Dictionary"
-            st.success("Login successful!")
+            st.success(f"🎉 Welcome {username}!")
             st.rerun()
         else:
-            st.error("Invalid username or password")
+            # ✅ BETTER ERROR MESSAGE
+            st.error(
+                "❌ Login failed.\n\n"
+                "• If you reinstalled the app, please **Register again**.\n"
+                "• Or check your username and password."
+            )
+
+    if st.button("➡️ Go to Register"):
+        st.session_state.page = "Register"
+        st.rerun()
 
 # -------------------------
 # REGISTER PAGE
 # -------------------------
 elif page == "Register":
     st.title("📝 Register")
-    st.info("After registering, return to **Login** to sign in.")
+
+    st.info(
+        "🆕 Create a new account here.\n\n"
+        "After registering, you will return to **Login**."
+    )
 
     username = st.text_input("Choose username", key="reg_user")
     password = st.text_input("Choose password", type="password", key="reg_pass")
@@ -149,29 +170,28 @@ elif page == "Register":
         else:
             st.error(msg)
 
+    if st.button("⬅️ Back to Login"):
+        st.session_state.page = "Login"
+        st.rerun()
+
 # -------------------------
 # DICTIONARY PAGE
 # -------------------------
 elif page == "Dictionary":
     if not st.session_state.authenticated:
-        st.warning("Please login first")
+        st.warning("🔒 Please login first")
         st.stop()
 
     st.title("📖 Smart Dictionary AI")
 
-    # 🔧 FIXED CHECKBOXES (stable keys)
     show_phonetics = st.sidebar.checkbox("Show Phonetics", True, key="show_phonetics")
     play_audio = st.sidebar.checkbox("Play Pronunciation Audio", True, key="play_audio")
     show_synonyms = st.sidebar.checkbox("Show Synonyms", True, key="show_synonyms")
     show_antonyms = st.sidebar.checkbox("Show Antonyms", True, key="show_antonyms")
     show_examples = st.sidebar.checkbox("Show Examples", True, key="show_examples")
 
-    output_style = st.sidebar.radio(
-        "Display style", ("Detailed", "Minimal"), key="output_style"
-    )
-    layout_option = st.sidebar.radio(
-        "Layout", ("Single Column", "Two Columns"), key="layout_option"
-    )
+    output_style = st.sidebar.radio("Display Style", ("Detailed", "Minimal"), key="output_style")
+    layout_option = st.sidebar.radio("Layout", ("Single Column", "Two Columns"), key="layout_option")
 
     word = st.text_input("Enter a word").strip().lower()
 
@@ -181,7 +201,7 @@ elif page == "Dictionary":
             data = response.json()
 
             if isinstance(data, dict):
-                st.error("No definitions found.")
+                st.error("❌ No definitions found.")
             else:
                 entry = data[0]
                 st.subheader(entry["word"].capitalize())
@@ -196,9 +216,9 @@ elif page == "Dictionary":
                         if show_examples and "example" in d:
                             col2.caption("Example: " + d["example"])
                         if show_synonyms and d.get("synonyms"):
-                            col2.write("🟢 Synonyms:", ", ".join(d["synonyms"][:10]))
+                            col2.write("🟢 Synonyms: " + ", ".join(d["synonyms"][:10]))
                         if show_antonyms and d.get("antonyms"):
-                            col2.write("🔴 Antonyms:", ", ".join(d["antonyms"][:10]))
+                            col2.write("🔴 Antonyms: " + ", ".join(d["antonyms"][:10]))
 
         except Exception as e:
             st.error(f"Error fetching data: {e}")
@@ -223,6 +243,6 @@ elif page == "Settings":
     if st.button("Update Password"):
         if new_pass:
             change_password(st.session_state.username, new_pass)
-            st.success("Password updated")
+            st.success("Password updated successfully")
         else:
             st.error("Password cannot be empty")
