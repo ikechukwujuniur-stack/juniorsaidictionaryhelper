@@ -17,26 +17,21 @@ st.set_page_config(page_title="📖 Smart Dictionary AI", layout="centered")
 # -------------------------
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
-
 if "username" not in st.session_state:
     st.session_state.username = ""
-
 if "page" not in st.session_state:
     st.session_state.page = "Login"
 
 # UI settings
-if "theme" not in st.session_state:
-    st.session_state.theme = "Light"
-if "brightness" not in st.session_state:
-    st.session_state.brightness = 1.0
-if "font_size" not in st.session_state:
-    st.session_state.font_size = 16
-if "accent_color" not in st.session_state:
-    st.session_state.accent_color = "#1f77b4"
-if "bg_color" not in st.session_state:
-    st.session_state.bg_color = "#ffffff"
-if "text_color" not in st.session_state:
-    st.session_state.text_color = "#000000"
+defaults = {
+    "brightness": 1.0,
+    "font_size": 16,
+    "accent_color": "#1f77b4",
+    "bg_color": "#ffffff",
+    "text_color": "#000000",
+}
+for k, v in defaults.items():
+    st.session_state.setdefault(k, v)
 
 # -------------------------
 # HELPERS
@@ -56,13 +51,13 @@ def save_users(users):
 
 def register_user(username, password):
     if not username or not password:
-        return False, "❌ Username and password cannot be empty"
+        return False, "Username and password cannot be empty"
     users = load_users()
     if username in users:
-        return False, "⚠️ Username already exists. Please login instead."
+        return False, "Username already exists. Please login."
     users[username] = hash_password(password)
     save_users(users)
-    return True, "✅ Registration successful! Please login next."
+    return True, "Registration successful! Please login."
 
 def verify_user(username, password):
     users = load_users()
@@ -77,12 +72,13 @@ def change_password(username, new_password):
 # SIDEBAR NAVIGATION
 # -------------------------
 st.sidebar.header("📌 Navigation")
-st.sidebar.caption("⬇️ Use this menu to move between pages")
+st.sidebar.caption("Use this menu to move between pages")
 
 page = st.sidebar.selectbox(
     "Go to page:",
     ["Login", "Register", "Dictionary", "Settings"],
-    index=["Login", "Register", "Dictionary", "Settings"].index(st.session_state.page)
+    index=["Login", "Register", "Dictionary", "Settings"].index(st.session_state.page),
+    key="nav_select",
 )
 st.session_state.page = page
 
@@ -95,25 +91,19 @@ if st.session_state.authenticated:
         st.rerun()
 
 # -------------------------
-# APPLY GLOBAL STYLES
+# GLOBAL STYLES
 # -------------------------
 st.markdown(
     f"""
     <style>
     html, body, [class*="st"] {{
-        background-color: {st.session_state.bg_color} !important;
-        color: {st.session_state.text_color} !important;
-        font-size: {st.session_state.font_size}px !important;
+        background-color: {st.session_state.bg_color};
+        color: {st.session_state.text_color};
+        font-size: {st.session_state.font_size}px;
         opacity: {st.session_state.brightness};
     }}
-    h1, h2, h3, h4, h5, h6 {{
-        color: {st.session_state.accent_color} !important;
-    }}
-    div.stButton > button {{
-        background-color: {st.session_state.accent_color} !important;
-        color: #ffffff !important;
-        border-radius: 8px;
-        padding: 0.5em 1em;
+    h1, h2, h3 {{
+        color: {st.session_state.accent_color};
     }}
     </style>
     """,
@@ -125,46 +115,30 @@ st.markdown(
 # -------------------------
 if page == "Login":
     st.title("🔑 Login")
+    st.info("👉 New user? Click **Register** in the sidebar.")
 
-    st.info(
-        "👉 **Already registered?** Enter your username & password and press **Login**.\n\n"
-        "👉 **New here?** Go to **Register** using the sidebar on the left."
-    )
-
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
+    username = st.text_input("Username", key="login_user")
+    password = st.text_input("Password", type="password", key="login_pass")
 
     if st.button("Login"):
         if verify_user(username.strip(), password.strip()):
             st.session_state.authenticated = True
             st.session_state.username = username.strip()
             st.session_state.page = "Dictionary"
-            st.success(f"🎉 Welcome {username}!")
+            st.success("Login successful!")
             st.rerun()
         else:
-            st.error("❌ Invalid username or password")
-
-    if st.button("➡️ Go to Register"):
-        st.session_state.page = "Register"
-        st.rerun()
+            st.error("Invalid username or password")
 
 # -------------------------
 # REGISTER PAGE
 # -------------------------
 elif page == "Register":
     st.title("📝 Register")
+    st.info("After registering, return to **Login** to sign in.")
 
-    st.info(
-        "🆕 **Create a new account here**\n\n"
-        "After registering, you will be taken back to **Login** to sign in."
-    )
-
-    if st.session_state.authenticated:
-        st.warning("You are already logged in.")
-        st.stop()
-
-    username = st.text_input("Choose a username")
-    password = st.text_input("Choose a password", type="password")
+    username = st.text_input("Choose username", key="reg_user")
+    password = st.text_input("Choose password", type="password", key="reg_pass")
 
     if st.button("Register"):
         success, msg = register_user(username.strip(), password.strip())
@@ -175,59 +149,69 @@ elif page == "Register":
         else:
             st.error(msg)
 
-    if st.button("⬅️ Back to Login"):
-        st.session_state.page = "Login"
-        st.rerun()
-
 # -------------------------
 # DICTIONARY PAGE
 # -------------------------
 elif page == "Dictionary":
     if not st.session_state.authenticated:
-        st.warning("🔒 Please login first (use the sidebar)")
-    else:
-        st.title("📖 Smart Dictionary AI")
-        st.caption(f"👤 Logged in as {st.session_state.username}")
+        st.warning("Please login first")
+        st.stop()
 
-        st.info("✏️ Type a word below and press **Enter** to get its meaning.")
+    st.title("📖 Smart Dictionary AI")
 
-        show_phonetics = st.sidebar.checkbox("Show Phonetics", True)
-        play_audio = st.sidebar.checkbox("Play Pronunciation Audio", True)
-        show_examples = st.sidebar.checkbox("Show Examples", True)
+    # 🔧 FIXED CHECKBOXES (stable keys)
+    show_phonetics = st.sidebar.checkbox("Show Phonetics", True, key="show_phonetics")
+    play_audio = st.sidebar.checkbox("Play Pronunciation Audio", True, key="play_audio")
+    show_synonyms = st.sidebar.checkbox("Show Synonyms", True, key="show_synonyms")
+    show_antonyms = st.sidebar.checkbox("Show Antonyms", True, key="show_antonyms")
+    show_examples = st.sidebar.checkbox("Show Examples", True, key="show_examples")
 
-        word = st.text_input("Enter a word").strip().lower()
+    output_style = st.sidebar.radio(
+        "Display style", ("Detailed", "Minimal"), key="output_style"
+    )
+    layout_option = st.sidebar.radio(
+        "Layout", ("Single Column", "Two Columns"), key="layout_option"
+    )
 
-        if word:
-            try:
-                response = requests.get(API_URL.format(word))
-                data = response.json()
+    word = st.text_input("Enter a word").strip().lower()
 
-                if isinstance(data, dict):
-                    st.error("❌ No definitions found.")
-                else:
-                    entry = data[0]
-                    st.subheader(entry["word"].capitalize())
+    if word:
+        try:
+            response = requests.get(API_URL.format(word))
+            data = response.json()
 
-                    for meaning in entry.get("meanings", []):
-                        for definition in meaning.get("definitions", []):
-                            st.write("•", definition["definition"])
-                            if show_examples and "example" in definition:
-                                st.caption("Example: " + definition["example"])
+            if isinstance(data, dict):
+                st.error("No definitions found.")
+            else:
+                entry = data[0]
+                st.subheader(entry["word"].capitalize())
 
-            except Exception as e:
-                st.error(f"Error fetching data: {e}")
+                col1, col2 = st.columns(2) if layout_option == "Two Columns" else (st, st)
+
+                for meaning in entry.get("meanings", []):
+                    pos = meaning.get("partOfSpeech", "")
+                    for d in meaning.get("definitions", []):
+                        col1.write(f"**({pos})** {d['definition']}")
+
+                        if show_examples and "example" in d:
+                            col2.caption("Example: " + d["example"])
+                        if show_synonyms and d.get("synonyms"):
+                            col2.write("🟢 Synonyms:", ", ".join(d["synonyms"][:10]))
+                        if show_antonyms and d.get("antonyms"):
+                            col2.write("🔴 Antonyms:", ", ".join(d["antonyms"][:10]))
+
+        except Exception as e:
+            st.error(f"Error fetching data: {e}")
 
 # -------------------------
 # SETTINGS PAGE
 # -------------------------
 elif page == "Settings":
-    st.title("⚙️ Settings")
-
     if not st.session_state.authenticated:
-        st.warning("🔒 Login required to access settings")
+        st.warning("Login required")
         st.stop()
 
-    st.subheader("🎨 Display Settings")
+    st.title("⚙️ Settings")
     st.session_state.brightness = st.slider("Brightness", 0.5, 1.0, st.session_state.brightness)
     st.session_state.font_size = st.slider("Font Size", 12, 24, st.session_state.font_size)
     st.session_state.accent_color = st.color_picker("Accent Color", st.session_state.accent_color)
@@ -235,11 +219,10 @@ elif page == "Settings":
     st.session_state.text_color = st.color_picker("Text Color", st.session_state.text_color)
 
     st.divider()
-    st.subheader("🔐 Account Settings")
     new_pass = st.text_input("Change password", type="password")
     if st.button("Update Password"):
         if new_pass:
             change_password(st.session_state.username, new_pass)
-            st.success("✅ Password updated successfully")
+            st.success("Password updated")
         else:
             st.error("Password cannot be empty")
