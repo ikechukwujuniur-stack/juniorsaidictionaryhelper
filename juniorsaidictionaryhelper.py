@@ -13,7 +13,7 @@ API_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/{}"
 st.set_page_config(page_title="📖 Smart Dictionary AI", layout="centered")
 
 # -------------------------
-# SESSION STATE (single source of truth)
+# SESSION STATE
 # -------------------------
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -70,16 +70,25 @@ def change_password(username, new_password):
     users[username] = hash_password(new_password)
     save_users(users)
 
+def change_username(old_username, new_username):
+    users = load_users()
+    if not new_username:
+        return False, "Username cannot be empty."
+    if new_username in users:
+        return False, "Username already taken."
+    users[new_username] = users.pop(old_username)
+    save_users(users)
+    st.session_state.username = new_username
+    return True, "Username updated successfully."
+
 # -------------------------
-# SIDEBAR NAVIGATION (FIXED)
+# SIDEBAR NAVIGATION
 # -------------------------
 st.sidebar.header("📌 Navigation")
 
-# Initialize nav_page if missing
 if "nav_page" not in st.session_state:
     st.session_state.nav_page = st.session_state.page
 
-# Sidebar selectbox
 nav_choice = st.sidebar.selectbox(
     "Go to page:",
     ["Login", "Register", "Dictionary", "Settings"],
@@ -87,11 +96,10 @@ nav_choice = st.sidebar.selectbox(
     key="nav_page"
 )
 
-# Only update page if user manually changes it
+# Update page only if user manually changes it
 if nav_choice != st.session_state.page:
     st.session_state.page = nav_choice
 
-# Show logged-in status
 if st.session_state.authenticated:
     st.sidebar.success(f"Logged in as {st.session_state.username}")
     if st.sidebar.button("🚪 Logout"):
@@ -148,9 +156,9 @@ if st.session_state.page == "Login":
         if verify_user(username.strip(), password.strip()):
             st.session_state.authenticated = True
             st.session_state.username = username.strip()
-            st.session_state.page = "Dictionary"
+            st.session_state.page = "Dictionary"  # Auto-redirect to Dictionary
             st.session_state.nav_page = "Dictionary"
-            st.success("Login successful!")
+            st.success("Login successful! Redirecting to Dictionary...")
             st.rerun()
         else:
             st.error(
@@ -257,6 +265,7 @@ elif st.session_state.page == "Settings":
 
     st.title("⚙️ Settings")
 
+    st.subheader("🎨 Display Settings")
     st.session_state.brightness = st.slider("Brightness", 0.5, 1.0, st.session_state.brightness)
     st.session_state.font_size = st.slider("Font Size", 12, 24, st.session_state.font_size)
     st.session_state.accent_color = st.color_picker("Accent Color", st.session_state.accent_color)
@@ -264,10 +273,23 @@ elif st.session_state.page == "Settings":
     st.session_state.text_color = st.color_picker("Text Color", st.session_state.text_color)
 
     st.divider()
-    new_pass = st.text_input("Change password", type="password")
+    st.subheader("🔐 Account Settings")
+
+    new_username = st.text_input("Change Username", key="new_username")
+    if st.button("Update Username"):
+        if new_username.strip():
+            success, msg = change_username(st.session_state.username, new_username.strip())
+            if success:
+                st.success(msg)
+            else:
+                st.error(msg)
+        else:
+            st.error("Username cannot be empty.")
+
+    new_pass = st.text_input("Change Password", type="password")
     if st.button("Update Password"):
         if new_pass:
             change_password(st.session_state.username, new_pass)
-            st.success("Password updated")
+            st.success("Password updated successfully")
         else:
             st.error("Password cannot be empty")
