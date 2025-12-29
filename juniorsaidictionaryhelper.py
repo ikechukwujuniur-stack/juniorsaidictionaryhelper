@@ -22,6 +22,10 @@ if "username" not in st.session_state:
 if "page" not in st.session_state:
     st.session_state.page = "Login"
 
+# Ensure nav_page is initialized safely
+if "nav_page" not in st.session_state:
+    st.session_state.nav_page = st.session_state.page
+
 # UI defaults
 defaults = {
     "brightness": 1.0,
@@ -52,6 +56,8 @@ def save_users(users):
         json.dump(users, f)
 
 def register_user(username, password):
+    username = username.strip()
+    password = password.strip()
     if not username or not password:
         return False, "Username and password cannot be empty"
     users = load_users()
@@ -62,15 +68,21 @@ def register_user(username, password):
     return True, "Registration successful! Please login."
 
 def verify_user(username, password):
+    username = username.strip()
+    password = password.strip()
     users = load_users()
     return username in users and users[username] == hash_password(password)
 
 def change_password(username, new_password):
+    username = username.strip()
+    new_password = new_password.strip()
     users = load_users()
     users[username] = hash_password(new_password)
     save_users(users)
 
 def change_username(old_username, new_username):
+    old_username = old_username.strip()
+    new_username = new_username.strip()
     users = load_users()
     if not new_username:
         return False, "Username cannot be empty."
@@ -85,9 +97,6 @@ def change_username(old_username, new_username):
 # SIDEBAR NAVIGATION
 # -------------------------
 st.sidebar.header("📌 Navigation")
-
-if "nav_page" not in st.session_state:
-    st.session_state.nav_page = st.session_state.page
 
 nav_choice = st.sidebar.selectbox(
     "Go to page:",
@@ -153,10 +162,10 @@ if st.session_state.page == "Login":
     password = st.text_input("Password", type="password", key="login_pass")
 
     if st.button("Login"):
-        if verify_user(username.strip(), password.strip()):
+        if verify_user(username, password):
             st.session_state.authenticated = True
             st.session_state.username = username.strip()
-            st.session_state.page = "Dictionary"  # Auto-redirect to Dictionary
+            st.session_state.page = "Dictionary"
             st.session_state.nav_page = "Dictionary"
             st.success("Login successful! Redirecting to Dictionary...")
             st.rerun()
@@ -184,7 +193,7 @@ elif st.session_state.page == "Register":
     password = st.text_input("Choose password", type="password", key="reg_pass")
 
     if st.button("Register"):
-        success, msg = register_user(username.strip(), password.strip())
+        success, msg = register_user(username, password)
         if success:
             st.success(msg)
             st.session_state.page = "Login"
