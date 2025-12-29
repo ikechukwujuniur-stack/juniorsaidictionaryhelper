@@ -8,6 +8,7 @@ import requests
 # CONFIG
 # -------------------------
 USERS_FILE = "users.json"
+CURRENT_USER_FILE = "current_user.json"  # For persistent login
 API_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/{}"
 
 st.set_page_config(page_title="📖 Smart Dictionary AI", layout="centered")
@@ -22,9 +23,8 @@ if "username" not in st.session_state:
 if "page" not in st.session_state:
     st.session_state.page = "Login"
 
-# Ensure nav_page is initialized safely
-if "nav_page" not in st.session_state:
-    st.session_state.nav_page = st.session_state.page
+# Safe initialization of nav_page
+st.session_state.setdefault("nav_page", st.session_state.page)
 
 # UI defaults
 defaults = {
@@ -91,7 +91,25 @@ def change_username(old_username, new_username):
     users[new_username] = users.pop(old_username)
     save_users(users)
     st.session_state.username = new_username
+    # Update persistent login
+    with open(CURRENT_USER_FILE, "w") as f:
+        json.dump({"username": new_username}, f)
     return True, "Username updated successfully."
+
+# -------------------------
+# PERSISTENT LOGIN CHECK
+# -------------------------
+if os.path.exists(CURRENT_USER_FILE):
+    try:
+        with open(CURRENT_USER_FILE, "r") as f:
+            saved = json.load(f)
+            if saved.get("username"):
+                st.session_state.username = saved["username"]
+                st.session_state.authenticated = True
+                st.session_state.page = "Dictionary"
+                st.session_state.nav_page = "Dictionary"
+    except Exception:
+        pass  # Ignore file read errors
 
 # -------------------------
 # SIDEBAR NAVIGATION
@@ -116,6 +134,9 @@ if st.session_state.authenticated:
         st.session_state.username = ""
         st.session_state.page = "Login"
         st.session_state.nav_page = "Login"
+        # Remove persistent login
+        if os.path.exists(CURRENT_USER_FILE):
+            os.remove(CURRENT_USER_FILE)
         st.rerun()
 
 # -------------------------
@@ -161,12 +182,30 @@ if st.session_state.page == "Login":
     username = st.text_input("Username", key="login_user")
     password = st.text_input("Password", type="password", key="login_pass")
 
+    # Optional login buttons
+    st.markdown("---")
+    st.write("Or sign in with:")
+    col1, col2, col3 = st.columns(3)
+    if col1.button("Google"):
+        st.info("Google sign-in not implemented yet (placeholder)")
+    if col2.button("Apple"):
+        st.info("Apple sign-in not implemented yet (placeholder)")
+    if col3.button("Guest"):
+        st.session_state.username = "Guest"
+        st.session_state.authenticated = True
+        st.session_state.page = "Dictionary"
+        st.session_state.nav_page = "Dictionary"
+        st.rerun()
+
     if st.button("Login"):
         if verify_user(username, password):
             st.session_state.authenticated = True
             st.session_state.username = username.strip()
             st.session_state.page = "Dictionary"
             st.session_state.nav_page = "Dictionary"
+            # Save persistent login
+            with open(CURRENT_USER_FILE, "w") as f:
+                json.dump({"username": st.session_state.username}, f)
             st.success("Login successful! Redirecting to Dictionary...")
             st.rerun()
         else:
